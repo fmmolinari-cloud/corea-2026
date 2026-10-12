@@ -295,6 +295,17 @@ main.view details.day .body{padding-top:14px}
 .panel section{padding:10px 0 0}
 .panel .city{margin-top:30px;padding-top:18px}
 .empty{color:var(--muted);padding:30px 0;text-align:center}
+.sheetp{position:fixed;inset:0;z-index:120;background:rgba(22,48,43,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheetp .pan{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+.sheetp h3{margin:0 0 2px;font-family:var(--display);font-size:20px}
+.sheetp .sub2{color:var(--muted);font-size:13px;margin:0 0 12px;font-family:var(--mono)}
+.sheetp .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sheetp a{display:flex;align-items:center;gap:8px;text-decoration:none;border:1px solid var(--line-strong);border-radius:10px;padding:11px 12px;color:var(--head);font-weight:600;font-size:15px;background:var(--card)}
+.sheetp a span{font-size:18px}
+.sheetp a.site{grid-column:1/-1;border-color:var(--jade);color:var(--jade)}
+.sheetp .close{margin-top:10px;width:100%;border:none;background:var(--surface);padding:10px;border-radius:8px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+main.view a.l{cursor:pointer}
+
 .who-badge{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;background:var(--surface);border:1px solid var(--line-strong);color:var(--head);padding:6px 9px;border-radius:4px;cursor:pointer;white-space:nowrap}
 .who-badge.n2{background:#F8F0D9;border-color:#E3D2A6;color:#6B4F11}
 .overlay{position:fixed;inset:0;z-index:100;background:rgba(22,48,43,.55);display:flex;align-items:center;justify-content:center;padding:20px}
@@ -921,16 +932,16 @@ main.view table.tbl{min-width:560px}
     var HL=d.hotels.filter(function(x){ return WHO!=='2' || x[0]!=='Nucleo 1'; });
     if(HL.length){ HL.forEach(function(x){ h+='<p class="h"><b>'+esc(x[0])+'</b> · '+(x[2]?'<a class="l" target="_blank" rel="noopener" href="'+x[2]+'">'+esc(x[1])+'</a>':esc(x[1]))+'</p>'; }); } else h+='<p class="h">—</p>';
     h+='</div><div class="qbox"><div class="k">I link del giorno</div><div class="lnks">';
-    if(d.links.length){ d.links.forEach(function(l){ h+='<a target="_blank" rel="noopener" class="'+(l.site?'site':'')+'" href="'+l.h+'">'+esc(l.t)+'</a>'; }); } else h+='<span style="color:var(--muted);font-size:13px">nessun link per questa giornata</span>';
+    if(d.links.length){ d.links.forEach(function(l){ h+='<a target="_blank" rel="noopener" class="'+(l.site?'site l-site':'')+'" href="'+l.h+'">'+esc(l.t)+'</a>'; }); } else h+='<span style="color:var(--muted);font-size:13px">nessun link per questa giornata</span>';
     h+='</div></div></div>';
     h+='<details class="day" open><summary></summary><div class="body">'+d.html+'</div></details>';
     h+='<div class="pager">'+(i>0?'<a href="#giorno/'+DAYS[i-1].id+'"><small>← prima</small>'+esc(DAYS[i-1].date)+'</a>':'<span></span>')+(i<DAYS.length-1?'<a class="next" href="#giorno/'+DAYS[i+1].id+'"><small>dopo →</small>'+esc(DAYS[i+1].date)+'</a>':'')+'</div>';
-    view.innerHTML=h; scrubN2(view); buildStrip(d.id); bindSp(); window.scrollTo({top:0});
+    view.innerHTML=h; scrubN2(view); buildStrip(d.id); bindSp(); bindPlaces(view); window.scrollTo({top:0});
     document.title='Corea · '+d.date;
   }
   function renderPanel(name){
     var t=document.getElementById('t-'+name); if(!t){ renderDay(); return; }
-    view.innerHTML='<div class="panel">'+t.innerHTML+'</div>'; scrubN2(view); buildStrip(null); bindSp(); window.scrollTo({top:0});
+    view.innerHTML='<div class="panel">'+t.innerHTML+'</div>'; scrubN2(view); buildStrip(null); bindSp(); bindPlaces(view); window.scrollTo({top:0});
     document.title='Corea · '+name;
   }
   function route(){
@@ -948,6 +959,36 @@ main.view table.tbl{min-width:560px}
     window.open(u,'_blank','noopener');
   });
   document.getElementById('todayBtn').addEventListener('click',function(){ var ti=todayIdx(); location.hash='#giorno/'+DAYS[ti<0?0:ti].id; if(location.hash==='#giorno/'+DAYS[ti<0?0:ti].id) route(); });
+  // scheda luogo: Google Maps / Kakao / Naver / TripAdvisor / sito
+  function placeName(a){
+    var h=a.getAttribute('href')||''; var m=h.match(/[?&]query=([^&]+)/);
+    var q=m?decodeURIComponent(m[1].replace(/\+/g,' ')):'';
+    var t=(a.textContent||'').trim();
+    return {q:q||t, t:t};
+  }
+  function openSheet(a){
+    var p=placeName(a); var q=p.q; var enc=encodeURIComponent(q);
+    var isSite=/l-site/.test(a.className); var href=a.getAttribute('href');
+    var o=document.createElement('div'); o.className='sheetp';
+    var h='<div class="pan"><h3>'+esc(p.t)+'</h3><p class="sub2">'+esc(q)+'</p><div class="opts">';
+    if(isSite) h+='<a class="site" target="_blank" rel="noopener" href="'+href+'"><span>🌐</span>Sito ufficiale / scheda</a>';
+    h+='<a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query='+enc+'"><span>📍</span>Google Maps</a>';
+    h+='<a target="_blank" rel="noopener" href="https://map.kakao.com/?q='+enc+'"><span>🟡</span>Kakao Map</a>';
+    h+='<a target="_blank" rel="noopener" href="https://map.naver.com/p/search/'+enc+'"><span>🟢</span>Naver Map</a>';
+    h+='<a target="_blank" rel="noopener" href="https://www.tripadvisor.com/Search?q='+enc+'"><span>🦉</span>TripAdvisor</a>';
+    h+='<a target="_blank" rel="noopener" href="https://www.google.com/search?q='+enc+'"><span>🔎</span>Google</a>';
+    h+='<a target="_blank" rel="noopener" href="https://papago.naver.com/?sk=auto&tk=ko&st='+enc+'"><span>🈶</span>Nome in coreano (Papago)</a>';
+    h+='</div><button class="close" type="button">Chiudi</button></div>';
+    o.innerHTML=h; o.addEventListener('click',function(e){ if(e.target===o||e.target.classList.contains('close')) o.remove(); });
+    document.body.appendChild(o);
+  }
+  function bindPlaces(root){
+    root.querySelectorAll('a.l, .lnks a').forEach(function(a){
+      var h=a.getAttribute('href')||'';
+      if(!/google\.com\/maps|maps\.app\.goo\.gl/.test(h) && !/l-site/.test(a.className) && !a.closest('.lnks')) return;
+      a.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); openSheet(a); });
+    });
+  }
   // sorprese
   function bindSp(){ document.querySelectorAll('.sp').forEach(function(el){ el.onclick=function(e){ e.stopPropagation(); el.classList.toggle('on'); }; }); }
   var sb=document.getElementById('toggleSp');
